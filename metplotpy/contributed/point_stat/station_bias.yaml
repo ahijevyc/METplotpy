@@ -1,0 +1,26 @@
+#
+# Input and Output Information
+#
+input_data_path: /path/to/input/directory
+input_datafile: input .stat or .txt file.  This will probably be a CNT line either from point stat or stat analysis
+output_plot_path: /path/to/output
+#
+# Output plot filenames
+# ***Must include the .png extension to the filename***
+station_bias_temperature_output_plotname: station_bias_temperature.png
+station_bias_dewpoint_output_plotname: station_bias_dewpoint.png
+
+#
+# Variables used in plotting, corresponding to the names in the input datafile.
+# When using your own data, replace the time, temperature, level, and wind variable names
+# that correspond to your data's variable names (e.g if your time variable name is 'time',
+# replace timeEv60 with 'time').
+#
+variables:
+  # Bias variable name in input data (I'm guessing she wants bias from the CNT line, which is ME)
+  - ME
+  
+
+#
+# Contour plot settings
+#
