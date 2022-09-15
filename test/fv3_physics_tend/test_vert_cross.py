@@ -1,14 +1,14 @@
 import pytest
 import os
-import runner_planview
+import runner_vert_cross
 
-def test_no_args():
+def test_run_help():
     '''
     Run the script with just the help option and the required input files
     '''
     runner_config_filename = "./runner_fv3_phys.yaml"
     try:
-        runner_planview.run_help(runner_config_filename)
+        runner_vert_cross.run_help(runner_config_filename)
         assert True
     except FileNotFoundError:
         # to verify that there aren't any hard-coded paths to the config file.
@@ -21,14 +21,15 @@ def test_no_args():
         # Catch-all, just in case there are some other exceptions that were raised.
         assert False
 
+
 def test_plot_created():
     '''
     Test if the plot file is created
     '''
     runner_config_filename = "./runner_fv3_phys.yaml"
     try:
-        expected_file = "./tmp_500hPa.png"
-        runner_planview.run_example(runner_config_filename)
+        expected_file = "./tmp_32.0N-115.0E-34.0N-82.0E.png"
+        runner_vert_cross.run_example(runner_config_filename)
         assert os.path.isfile(expected_file) == True
         os.remove(expected_file)
     except FileNotFoundError as fnfe:
@@ -42,8 +43,8 @@ def test_plot_created_for_output_file_name():
     runner_config_filename = "./runner_fv3_phys.yaml"
 
     try:
-        expected_file = "./test_planview.png"
-        runner_planview.run_with_novel_output_file(runner_config_filename)
+        expected_file = "./test_vert_cross.png"
+        runner_vert_cross.run_with_novel_output_file(runner_config_filename)
         assert os.path.isfile(expected_file) == True
         os.remove(expected_file)
     except FileNotFoundError as fnfe:
@@ -56,13 +57,11 @@ def test_novel_output_dir():
     '''
     runner_config_filename = "./runner_fv3_phys.yaml"
     try:
-        runner_planview.run_with_novel_output_dir(runner_config_filename)
-        expected_file = "./output/test_planview.png"
+        runner_vert_cross.run_with_novel_output_dir(runner_config_filename)
+        expected_file = "./output/test_vert_cross.png"
         assert os.path.isfile(expected_file) == True
         os.remove(expected_file)
         os.removedirs("./output")
 
-
     except FileNotFoundError as fnfe:
         assert False
-
