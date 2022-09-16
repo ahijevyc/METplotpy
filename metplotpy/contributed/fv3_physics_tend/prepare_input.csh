@@ -1,4 +1,5 @@
 #!/bin/csh
+module load nco
 # Concatenate sfc and atm files.
 if ( ! -e new.nc ) then
     ncrcat /glade/scratch/mwong/dave/ufs-mrw/2020070818/sfcf*.nc sfc.nc
