@@ -58,7 +58,10 @@ extent:
     - 22.1
     - 49.5
 
-# Found FV3 standard_parallel by trial and error with smaller and smaller tolerances given to mepy.assign_y_x(). longitude is mean.
+projection : "LambertConformal"
+
+# Found FV3 central_longitude=-97.5 and standard_parallel=38.139 by trial and error with smaller and smaller tolerances given to mepy.assign_y_x(). longitude is mean.
+central_longitude : -97.5
 standard_parallel : 38.139
 
 # color map

@@ -30,6 +30,10 @@ def add_time0(ds, variable, fv3, interval=np.timedelta64(1,'h')):
     tokeep.append(variable)
     ds = ds[tokeep]
 
+    if time0_varname[variable] == variable:
+        logging.info(f"time0 variable name {time0_varname[variable]} same as requested variable {variable}. No need to prepend time0.")
+        return ds
+
     # Return new Dataset with time0 (initialization time)
     # Assume initialization time is an interval before first time
     # in ds. Interval is 1 hour by default, but can be changed.

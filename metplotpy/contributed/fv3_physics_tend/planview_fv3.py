@@ -87,7 +87,7 @@ def main():
     gds  = xarray.open_dataset(gfile.name)
     lont = gds[fv3["lon_name"]]
     latt = gds[fv3["lat_name"]]
-    area = gds["area"]
+    area = gds["area"] if "area" in gds else None
 
     # Open input file
     logging.debug(f"About to open {ifile}")
@@ -203,9 +203,9 @@ def main():
         mask = physics_tend.pts_in_shp(latt.values, lont.values, shp, debug=debug) # Use .values to avoid AttributeError: 'DataArray' object has no attribute 'flatten'
         mask = xarray.DataArray(mask, coords=[da2plot.grid_yt, da2plot.grid_xt])
         da2plot = da2plot.where(mask, drop=True)
-        area     = area.where(mask).fillna(0)
+        if area is not None:
+            area     = area.where(mask).fillna(0)
 
-    totalarea = area.metpy.convert_units("km**2").sum()
 
     # Make default dimensions of facetgrid kind of square.
     if not ncols:
@@ -220,9 +220,11 @@ def main():
         # Error occurs in pcolormesh().
         da2plot=da2plot.squeeze()
 
-
-    # central lon/lat from https://github.com/NOAA-EMC/regional_workflow/blob/release/public-v1/ush/Python/plot_allvars.py
-    subplot_kws = dict(projection=cartopy.crs.LambertConformal(central_longitude=-97.6, central_latitude=35.4, standard_parallels=None))
+    if fv3["projection"] == "LambertConformal":
+        # central lon/lat from https://github.com/NOAA-EMC/regional_workflow/blob/release/public-v1/ush/Python/plot_allvars.py
+        subplot_kws = dict(projection=cartopy.crs.LambertConformal(central_longitude=fv3["central_longitude"], central_latitude=fv3["central_latitude"], standard_parallels=None))
+    elif fv3["projection"] == "Mercator":
+        subplot_kws = dict(projection=cartopy.crs.Mercator(central_longitude=fv3["central_longitude"], min_latitude=fv3["extent"][2], max_latitude=fv3["extent"][3]))
 
 
     logging.info("plot pcolormesh")
@@ -233,7 +235,7 @@ def main():
         ax.set_extent(fv3["extent"]) # Why needed only when col=tendency_dim? With col="pfull" it shrinks to unmasked size.
         physics_tend.add_conus_features(ax)
 
-    # Add time to title 
+    # Add time to title
     title = f'{time0}-{validtime} ({twindow_quantity.to("hours"):~} time window)'
     if col == tendency_dim:
         title = f'pfull={pfull[0]:~.0f} {title}'
@@ -247,7 +249,8 @@ def main():
         fineprint  += f"\nsubtract: {os.path.realpath(subtract.name)}"
     fineprint += f"\ngrid_spec: {os.path.realpath(gfile.name)}"
     if shp: fineprint += f"\nmask: {shp}"
-    fineprint += f"\ntotal area: {totalarea.data:~.0f}"
+    if area is not None:
+        fineprint += f'\ntotal area: {area.metpy.convert_units("km**2").sum().data:~.0f}'
     fineprint += f"\nvertical interpolation method: {method}  requested levels: {pfull}"
     fineprint += f"\ncreated {datetime.datetime.now(tz=None)}"
     if nofineprint:

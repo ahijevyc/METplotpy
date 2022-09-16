@@ -88,7 +88,7 @@ def main():
     gds  = xarray.open_dataset(gfile.name)
     lont = gds[fv3["lon_name"]]
     latt = gds[fv3["lat_name"]]
-    area = gds["area"]
+    area = gds["area"] if "area" in gds else None
 
     # Open input file
     logging.debug(f"About to open {ifile}")
@@ -159,6 +159,8 @@ def main():
     twindow_quantity = twindow.total_seconds() * units.seconds 
     resid = total - dstate_variable/twindow_quantity
 
+
+    logging.info("Define DataArray to plot (da2plot).")
     da2plot = tendencies_avg
     if resid is not None:
         # Add total and resid DataArrays to tendency_dim.
@@ -174,14 +176,15 @@ def main():
         mask = physics_tend.pts_in_shp(latt.values, lont.values, shp, debug=debug) # Use .values to avoid AttributeError: 'DataArray' object has no attribute 'flatten'
         mask = xarray.DataArray(mask, coords=[da2plot.grid_yt, da2plot.grid_xt])
         da2plot = da2plot.where(mask, drop=True)
-        area     = area.where(mask).fillna(0)
+        if area is not None:
+            area     = area.where(mask).fillna(0)
 
-    totalarea = area.metpy.convert_units("km**2").sum()
-
-
-    logging.info(f"area-weighted spatial average")
-    da2plot = da2plot.weighted(area).mean(area.dims)
-
+    if area is None:
+        logging.info(f"spatial average of {(lont.name,latt.name)}")
+        da2plot = da2plot.mean((lont.name, latt.name))
+    else:
+        logging.info(f"area-weighted spatial average")
+        da2plot = da2plot.weighted(area).mean(area.dims)
 
     logging.info("creating figure")
     fig, ax = plt.subplots()
@@ -237,7 +240,8 @@ def main():
         fineprint  += f"\nsubtract: {os.path.realpath(subtract.name)}"
     fineprint += f"\ngrid_spec: {os.path.realpath(gfile.name)}"
     if shp: fineprint += f"\nmask: {shp}"
-    fineprint += f"\ntotal area: {totalarea.data:~.0f}"
+    if area is not None:
+        fineprint += f'\ntotal area: {area.metpy.convert_units("km**2").sum().data:~.0f}'
     fineprint += f"\ncreated {datetime.datetime.now(tz=None)}"
     if nofineprint:
         logging.info(fineprint)

@@ -170,6 +170,8 @@ def main():
     if da2plot.metpy.vertical.attrs["units"] == "mb":
         da2plot.metpy.vertical.attrs["units"] = "hPa" # For MetPy. Otherwise, mb is interpreted as millibarn.
 
+    # dequantify moves units from DataArray to Attributes. Now they show up in colorbar. And they aren't lost in xarray.DataArray.interp.
+    da2plot = da2plot.metpy.dequantify()
 
     # Make default dimensions of facetgrid kind of square.
     if not ncols:
@@ -178,19 +180,21 @@ def main():
 
     nrows = int(np.ceil(len(da2plot)/ncols))
 
-    # dequantify moves units from DataArray to Attributes. Now they show up in colorbar.
-    da2plot = da2plot.metpy.dequantify()
 
     if da2plot["pfull"].size == 1:
         # Avoid ValueError: ('grid_yt', 'grid_xt') must be a permuted list of ('pfull', 'grid_yt', 'grid_xt'), unless `...` is included
         # Error occurs in pcolormesh().
         da2plot=da2plot.squeeze()
 
-    # Kludgy steps to prepare metadata for metpy cross section
-    da2plot = da2plot.drop_vars(['grid_yt','grid_xt','long_name']).rename(dict(grid_yt="y",grid_xt="x")) # these confuse metpy 
-    # fv3 uses Extended Schmidt Gnomomic grid for regional applications. This is not in cartopy.
-    # Found similar Lambert Conformal projection by trial and error.
-    da2plot = da2plot.metpy.assign_crs( grid_mapping_name="lambert_conformal_conic", standard_parallel=fv3["standard_parallel"], longitude_of_central_meridian=-97.5, latitude_of_projection_origin=fv3["standard_parallel"]).metpy.assign_y_x(force=True, tolerance=44069*units.m)
+    if fv3["projection"] == "LambertConformal":
+        # Kludgy steps to prepare metadata for metpy cross section
+        # fv3 uses Extended Schmidt Gnomomic grid for regional applications. This is not in cartopy.
+        # Found similar Lambert Conformal projection by trial and error.
+        da2plot = da2plot.drop_vars(['grid_yt','grid_xt','long_name']).rename(dict(grid_yt="y",grid_xt="x")) # these confuse metpy 
+        da2plot = da2plot.metpy.assign_crs( grid_mapping_name="lambert_conformal_conic", standard_parallel=fv3["standard_parallel"], longitude_of_central_meridian=fv3["central_longitude"], latitude_of_projection_origin=fv3["standard_parallel"]).metpy.assign_y_x(force=True, tolerance=44069*units.m)
+    elif fv3["projection"] == "Mercator":
+        # Convert to_dataset to apply parse_cf. Then back again.
+        da2plot = da2plot.to_dataset(name=variable).rename({"grid_yt":"y","grid_xt":"x"}).metpy.parse_cf().to_array().squeeze()
     # Define cross section. Use different variable than da2plot because da2plot is used later for inset.
     # upgraded xarray to 0.21.1 to avoid FutureWarning: Passing method to Float64Index.get_loc is deprecated
     cross = cross_section(da2plot, startpt, endpt)
@@ -219,9 +223,9 @@ def main():
     # Plot the endpoints of the cross section (make sure they match path)
     endpoints = data_crs.transform_points(cartopy.crs.Geodetic(), *np.vstack([startpt, endpt]).transpose()[::-1])
     bb = ax_inset.scatter(endpoints[:, 0], endpoints[:, 1], s=1.3, c='k', zorder=2)
-    ax_inset.scatter(cross['x'][dindex::dindex], cross['y'][dindex::dindex], s=3.4, c='white', linewidths=0.2, edgecolors='k', zorder=bb.get_zorder()+1)
+    ax_inset.scatter(cross['x'][dindex::dindex], cross['y'][dindex::dindex], s=3.4, c='white', linewidths=0.2, edgecolors='k', zorder=bb.get_zorder()+1, transform=data_crs)
     # Plot the path of the cross section
-    ax_inset.plot(cross['x'], cross['y'], c='k', zorder=2)
+    ax_inset.plot(cross['x'], cross['y'], c='k', zorder=2, transform=data_crs)
     physics_tend.add_conus_features(ax_inset)
     extent = fv3["extent"]
     ax_inset.set_extent(extent)
