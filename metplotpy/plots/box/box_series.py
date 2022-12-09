@@ -108,12 +108,26 @@ class BoxSeries(Series):
                 for i, filter_val in enumerate(filter_list):
                     if utils.is_string_integer(filter_val):
                         filter_list[i] = int(filter_val)
+                    elif utils.is_string_strictly_float(filter_val):
+                        filter_list[i] = float(filter_val)
 
                 all_filters.append((self.input_data[field].isin(filter_list)))
 
             # filter by provided indy
-            all_filters.append((self.input_data[self.config.indy_var].isin(self.config.indy_vals)))
-            # use numpy to select the rows where any record evaluates to True
+
+            # Duck typing is different in Python 3.6 and Python 3.8, for
+            # Python 3.8 and above, explicitly type cast the self.input_data[self.config.indy_var]
+            # Panda Series object to 'str' if the list of indy_vals are of str type.
+            # This will ensure we are doing str to str comparisons.
+            if isinstance(self.config.indy_vals[0], str):
+                indy_var_series = self.input_data[self.config.indy_var].astype(str)
+            else:
+                # The Panda series is as it was originally coded.
+                indy_var_series = self.input_data[self.config.indy_var]
+
+            all_filters.append(indy_var_series.isin(self.config.indy_vals))
+
+            #use numpy to select the rows where any record evaluates to True
             mask = np.array(all_filters).all(axis=0)
             self.series_data = self.input_data.loc[mask]
 
@@ -171,6 +185,8 @@ class BoxSeries(Series):
         for indy in self.config.indy_vals:
             if utils.is_string_integer(indy):
                 indy = int(indy)
+            elif utils.is_string_strictly_float(indy):
+                indy = float(indy)
 
             point_data = self.series_data.loc[self.series_data[self.config.indy_var] == indy]
             series_points_results['nstat'].append(len(point_data['stat_value']))
@@ -199,6 +215,8 @@ class BoxSeries(Series):
         for indy in self.config.indy_vals:
             if utils.is_string_integer(indy):
                 indy = int(indy)
+            elif utils.is_string_strictly_float(indy):
+                indy = float(indy)
 
             stats_indy_1 = \
                 series_data_1.loc[series_data_1[self.config.indy_var] == indy]
